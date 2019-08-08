@@ -1,34 +1,44 @@
-const express = require('express')
-const bodyParser = require('body-parser')
-const request = require('request')
-const app = express()
-const port = process.env.PORT || 4000
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
-app.post('/webhook', (req, res) => {
-    let reply_token = req.body.events[0].replyToken
-    let msg = req.body.events[0].message.text
-    reply(reply_token, msg)
-    res.sendStatus(200)
-})
-app.listen(port)
-function reply(reply_token, msg) {
-    let headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer {kUem8fmXO+8ASQNXRZvvRjYswsTEhEBJxHqR4r2LsO0Mf9iF8wcSGUIdqh6DINCzMCSoND4PI4uGTRzI7ex4xx15ieWE2YqARc8po7Nnc8eKcPXJl3goDhH4x65MQkELVPH7hSAgWZ1bvtoKdTkNwgdB04t89/1O/w1cDnyilFU=}'
+const express = require('express');
+const line = require('@line/bot-sdk');
+
+require('dotenv').config();
+
+const app = express();
+
+const config = {
+    channelAccessToken: process.env.channelAccessToken,
+    channelSecret: process.env.channelSecret
+};
+
+const client = new line.Client(config);
+
+app.post('/webhook', line.middleware(config), (req, res) => {
+    Promise
+        .all(req.body.events.map(handleEvent))
+        .then((result) => res.json(result));
+});
+
+function handleEvent(event) {
+
+    console.log(event);
+    if (event.type === 'message' && event.message.type === 'text') {
+        handleMessageEvent(event);
+    } else {
+        return Promise.resolve(null);
     }
-    let body = JSON.stringify({
-        replyToken: reply_token,
-        messages: [{
-            type: 'text',
-            text: msg
-        }]
-    })
-    request.post({
-        url: 'https://api.line.me/v2/bot/message/reply',
-        headers: headers,
-        body: body
-    }, (err, res, body) => {
-        console.log('status = ' + res.statusCode);
-    });
 }
+
+function handleMessageEvent(event) {
+    var msg = {
+        type: 'text',
+        text: 'สวัสดีครัช'
+    };
+
+    return client.replyMessage(event.replyToken, msg);
+}
+
+app.set('port', (process.env.PORT || 5000));
+
+app.listen(app.get('port'), function () {
+    console.log('run at port', app.get('port'));
+});
